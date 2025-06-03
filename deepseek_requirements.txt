@@ -1,0 +1,26 @@
+# Core dependencies for DeepSeek Voice Assistant
+streamlit>=1.43.2
+requests>=2.31.0
+openai>=1.68.2
+python-dotenv>=1.0.1
+
+# Audio processing (optional but recommended)
+sounddevice>=0.4.6
+soundfile>=0.12.1
+numpy>=1.24.0
+
+# Additional utilities
+pathlib
+uuid
+tempfile
+threading
+queue
+time
+datetime
+json
+base64
+
+# Optional: Enhanced audio processing
+# RealtimeSTT>=0.1.0  # For advanced speech recognition
+# whisper>=1.1.10     # For local speech recognition
+
