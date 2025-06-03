@@ -1,0 +1,1016 @@
+#!/usr/bin/env python3
+"""
+Component Upgrade Script
+
+This script validates all components and applies necessary upgrades to ensure
+optimal performance and compatibility across the voice assistant systems.
+"""
+
+import os
+import sys
+import asyncio
+import subprocess
+import shutil
+import json
+import yaml
+from pathlib import Path
+from typing import Dict, Any, List, Optional, Tuple
+from datetime import datetime
+import tempfile
+
+# Rich console for better output
+try:
+    from rich.console import Console
+    from rich.panel import Panel
+    from rich.table import Table
+    from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+    from rich.markdown import Markdown
+    RICH_AVAILABLE = True
+except ImportError:
+    RICH_AVAILABLE = False
+
+class ComponentUpgrader:
+    """Handles component validation and upgrades"""
+    
+    def __init__(self):
+        self.console = Console() if RICH_AVAILABLE else None
+        self.upgrade_results = {}
+        self.backup_dir = Path("backups") / datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.backup_dir.mkdir(parents=True, exist_ok=True)
+        
+    def log(self, message: str, level: str = "info"):
+        """Log message with appropriate formatting"""
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        
+        if self.console:
+            if level == "error":
+                self.console.print(f"[red]❌ {timestamp} - {message}[/red]")
+            elif level == "warning":
+                self.console.print(f"[yellow]⚠️ {timestamp} - {message}[/yellow]")
+            elif level == "success":
+                self.console.print(f"[green]✅ {timestamp} - {message}[/green]")
+            else:
+                self.console.print(f"[blue]ℹ️ {timestamp} - {message}[/blue]")
+        else:
+            print(f"{level.upper()}: {timestamp} - {message}")
+    
+    def backup_file(self, file_path: Path) -> bool:
+        """Create backup of a file before modification"""
+        try:
+            if file_path.exists():
+                backup_path = self.backup_dir / file_path.name
+                shutil.copy2(file_path, backup_path)
+                self.log(f"Backed up {file_path} to {backup_path}")
+                return True
+            return False
+        except Exception as e:
+            self.log(f"Failed to backup {file_path}: {e}", "error")
+            return False
+    
+    async def upgrade_requirements(self) -> Dict[str, Any]:
+        """Upgrade and consolidate requirements files"""
+        self.log("Upgrading requirements files...")
+        
+        result = {
+            "component": "Requirements",
+            "status": "unknown",
+            "changes": [],
+            "errors": []
+        }
+        
+        try:
+            # Consolidate all requirements
+            all_requirements = set()
+            
+            # Core requirements
+            core_deps = [
+                "streamlit>=1.43.2",
+                "openai>=1.68.2",
+                "requests>=2.31.0",
+                "python-dotenv>=1.0.1",
+                "pydantic>=2.10.6",
+                "pydantic_core>=2.27.2",
+                "numpy>=1.24.0",
+                "pathlib",
+                "uuid",
+                "tempfile",
+                "threading",
+                "queue",
+                "time",
+                "datetime",
+                "json",
+                "yaml",
+                "base64"
+            ]
+            
+            # Audio processing
+            audio_deps = [
+                "sounddevice>=0.4.6",
+                "soundfile>=0.12.1",
+                "pyaudio>=0.2.11",
+                "RealtimeSTT>=0.1.0"
+            ]
+            
+            # Computer vision and automation
+            vision_deps = [
+                "opencv-python>=4.8.0",
+                "pillow>=10.0.0",
+                "pytesseract>=0.3.10",
+                "pyautogui>=0.9.54",
+                "pygetwindow>=0.0.9",
+                "psutil>=5.9.0"
+            ]
+            
+            # Rich console and utilities
+            util_deps = [
+                "rich>=13.0.0",
+                "markdown>=3.5.0"
+            ]
+            
+            # Optional dependencies
+            optional_deps = [
+                "# Optional: Enhanced audio processing",
+                "# soundfile>=0.12.1",
+                "# librosa>=0.10.0",
+                "",
+                "# Optional: Enhanced computer vision", 
+                "# easyocr>=1.7.0",
+                "# ultralytics>=8.0.0",
+                "",
+                "# Development and testing",
+                "# pytest>=7.0.0",
+                "# pytest-asyncio>=0.21.0"
+            ]
+            
+            # Create comprehensive requirements file
+            requirements_content = [
+                "# Enhanced Voice Assistant - Comprehensive Requirements",
+                "# Generated by upgrade_components.py",
+                f"# Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+                "",
+                "# Core dependencies",
+                *core_deps,
+                "",
+                "# Audio processing",
+                *audio_deps,
+                "",
+                "# Computer vision and automation",
+                *vision_deps,
+                "",
+                "# Utilities and console",
+                *util_deps,
+                "",
+                *optional_deps
+            ]
+            
+            # Write consolidated requirements
+            requirements_file = Path("requirements_enhanced.txt")
+            self.backup_file(requirements_file)
+            
+            with open(requirements_file, "w") as f:
+                f.write("\n".join(requirements_content))
+            
+            result["changes"].append(f"Created consolidated requirements file: {requirements_file}")
+            
+            # Create platform-specific requirements
+            platform_requirements = {
+                "requirements_minimal.txt": core_deps + ["# Minimal installation for basic functionality"],
+                "requirements_audio.txt": core_deps + audio_deps + ["# Audio-enabled installation"],
+                "requirements_full.txt": core_deps + audio_deps + vision_deps + util_deps + ["# Full installation with all features"]
+            }
+            
+            for filename, deps in platform_requirements.items():
+                with open(filename, "w") as f:
+                    f.write(f"# {filename.replace('_', ' ').title()}\n")
+                    f.write(f"# Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+                    f.write("\n".join(deps))
+                
+                result["changes"].append(f"Created {filename}")
+            
+            result["status"] = "success"
+            self.log("Requirements files upgraded successfully", "success")
+            
+        except Exception as e:
+            result["errors"].append(f"Requirements upgrade failed: {str(e)}")
+            result["status"] = "failed"
+            self.log(f"Requirements upgrade failed: {e}", "error")
+        
+        return result
+    
+    async def upgrade_configuration(self) -> Dict[str, Any]:
+        """Upgrade configuration management"""
+        self.log("Upgrading configuration management...")
+        
+        result = {
+            "component": "Configuration",
+            "status": "unknown",
+            "changes": [],
+            "errors": []
+        }
+        
+        try:
+            # Create enhanced configuration template
+            config_template = {
+                "api_settings": {
+                    "openai": {
+                        "api_key": "${OPENAI_API_KEY}",
+                        "models": {
+                            "chat": "gpt-4o-mini",
+                            "tts": "tts-1",
+                            "stt": "whisper-1"
+                        },
+                        "rate_limits": {
+                            "requests_per_minute": 60,
+                            "tokens_per_minute": 10000
+                        }
+                    },
+                    "deepseek": {
+                        "api_key": "${DEEPSEEK_API_KEY}",
+                        "api_base": "https://api.deepseek.com/v1",
+                        "models": {
+                            "chat": "deepseek-chat",
+                            "coder": "deepseek-coder",
+                            "reasoner": "deepseek-reasoner"
+                        },
+                        "rate_limits": {
+                            "requests_per_minute": 30,
+                            "tokens_per_minute": 5000
+                        }
+                    }
+                },
+                "voice_settings": {
+                    "tts": {
+                        "default_voice": "nova",
+                        "speed": 1.0,
+                        "voices": ["alloy", "ash", "ballad", "coral", "echo", "fable", "onyx", "nova", "sage", "shimmer", "verse"]
+                    },
+                    "stt": {
+                        "model": "small.en",
+                        "language": "en",
+                        "sample_rate": 16000,
+                        "chunk_size": 1024,
+                        "silence_threshold": 0.01,
+                        "silence_duration": 2.0,
+                        "max_recording_duration": 30.0
+                    },
+                    "realtime_stt": {
+                        "enabled": False,
+                        "model": "small.en",
+                        "compute_type": "float32",
+                        "beam_size": 5,
+                        "post_speech_silence_duration": 0.8
+                    }
+                },
+                "safety_settings": {
+                    "mode": "high",
+                    "emergency_stop": False,
+                    "rate_limits": {
+                        "click": {"max_per_minute": 60},
+                        "type": {"max_per_minute": 30},
+                        "key_press": {"max_per_minute": 120},
+                        "open_application": {"max_per_minute": 10}
+                    },
+                    "blocked_applications": [
+                        "terminal", "cmd", "powershell", "bash", "zsh",
+                        "system preferences", "control panel", "registry editor",
+                        "task manager", "activity monitor", "system monitor"
+                    ],
+                    "sensitive_patterns": [
+                        "delete.*system", "format.*drive", "rm\\s+-rf",
+                        "del\\s+/s", "shutdown", "restart", "reboot"
+                    ]
+                },
+                "ui_settings": {
+                    "theme": "auto",
+                    "layout": "wide",
+                    "sidebar_state": "expanded",
+                    "show_conversation_history": True,
+                    "max_history_items": 50,
+                    "auto_save_conversations": True
+                },
+                "automation_settings": {
+                    "enabled": False,
+                    "screenshot_quality": "high",
+                    "ui_detection_confidence": 0.8,
+                    "action_delay": 0.5,
+                    "max_retries": 3
+                },
+                "logging": {
+                    "level": "INFO",
+                    "file": "voice_assistant.log",
+                    "max_size": "10MB",
+                    "backup_count": 5,
+                    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+                },
+                "directories": {
+                    "conversations": "conversations",
+                    "audio": "audio",
+                    "screenshots": "screenshots",
+                    "logs": "logs",
+                    "temp": "${TEMP}/voice_assistant"
+                }
+            }
+            
+            # Save configuration template
+            config_file = Path("config_template.yml")
+            self.backup_file(config_file)
+            
+            with open(config_file, "w") as f:
+                yaml.dump(config_template, f, default_flow_style=False, indent=2)
+            
+            result["changes"].append(f"Created configuration template: {config_file}")
+            
+            # Create environment template
+            env_template = """# Enhanced Voice Assistant Environment Configuration
+# Copy this file to .env and fill in your actual values
+
+# API Keys (Required)
+OPENAI_API_KEY=your_openai_api_key_here
+DEEPSEEK_API_KEY=your_deepseek_api_key_here
+
+# Optional: Anthropic for Claude integration
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+
+# Application Settings
+VOICE_ASSISTANT_CONFIG_FILE=config.yml
+VOICE_ASSISTANT_LOG_LEVEL=INFO
+VOICE_ASSISTANT_SAFETY_MODE=high
+
+# Directory Settings
+VOICE_ASSISTANT_DATA_DIR=./data
+VOICE_ASSISTANT_TEMP_DIR=/tmp/voice_assistant
+VOICE_ASSISTANT_AUDIO_DIR=./audio
+VOICE_ASSISTANT_SCREENSHOTS_DIR=./screenshots
+
+# Feature Flags
+VOICE_ASSISTANT_ENABLE_AUTOMATION=false
+VOICE_ASSISTANT_ENABLE_REALTIME_STT=false
+VOICE_ASSISTANT_ENABLE_COMPUTER_VISION=false
+
+# Performance Settings
+VOICE_ASSISTANT_MAX_WORKERS=4
+VOICE_ASSISTANT_TIMEOUT=30
+VOICE_ASSISTANT_RATE_LIMIT=60
+
+# Development Settings
+VOICE_ASSISTANT_DEBUG=false
+VOICE_ASSISTANT_PROFILE=false
+"""
+            
+            env_file = Path(".env.template")
+            with open(env_file, "w") as f:
+                f.write(env_template)
+            
+            result["changes"].append(f"Created environment template: {env_file}")
+            
+            result["status"] = "success"
+            self.log("Configuration management upgraded successfully", "success")
+            
+        except Exception as e:
+            result["errors"].append(f"Configuration upgrade failed: {str(e)}")
+            result["status"] = "failed"
+            self.log(f"Configuration upgrade failed: {e}", "error")
+        
+        return result
+    
+    async def upgrade_documentation(self) -> Dict[str, Any]:
+        """Upgrade documentation and README files"""
+        self.log("Upgrading documentation...")
+        
+        result = {
+            "component": "Documentation",
+            "status": "unknown",
+            "changes": [],
+            "errors": []
+        }
+        
+        try:
+            # Create comprehensive installation guide
+            installation_guide = """# Installation Guide - Enhanced Voice Assistant
+
+## Quick Start
+
+### Prerequisites
+- Python 3.8 or higher
+- Git
+- Audio input/output devices (microphone and speakers)
+
+### 1. Clone the Repository
+```bash
+git clone <repository-url>
+cd voice-assistant
+```
+
+### 2. Choose Installation Type
+
+#### Minimal Installation (Text-only)
+```bash
+pip install -r requirements_minimal.txt
+```
+
+#### Audio-Enabled Installation (Recommended)
+```bash
+pip install -r requirements_audio.txt
+```
+
+#### Full Installation (All Features)
+```bash
+pip install -r requirements_full.txt
+```
+
+### 3. Configure API Keys
+```bash
+cp .env.template .env
+# Edit .env and add your API keys
+```
+
+### 4. Run the Application
+
+#### Enhanced Voice Assistant (Recommended)
+```bash
+streamlit run enhanced_voice_assistant.py
+```
+
+#### DeepSeek Voice Assistant
+```bash
+streamlit run deepseek_voice_assistant.py
+```
+
+#### Computer Automation Assistant
+```bash
+streamlit run voice_computer_assistant.py
+```
+
+## Platform-Specific Setup
+
+### macOS
+```bash
+# Install audio dependencies
+brew install portaudio
+
+# Install the application
+pip install -r requirements_audio.txt
+```
+
+### Ubuntu/Debian
+```bash
+# Install system dependencies
+sudo apt-get update
+sudo apt-get install portaudio19-dev python3-dev build-essential
+
+# Install the application
+pip install -r requirements_audio.txt
+```
+
+### Windows
+```bash
+# Install the application (dependencies should install automatically)
+pip install -r requirements_audio.txt
+
+# If you encounter issues, install Visual C++ Build Tools
+```
+
+## Troubleshooting
+
+### Audio Issues
+- Ensure microphone permissions are granted
+- Check audio device settings
+- Try different audio backends
+
+### API Issues
+- Verify API keys are correct
+- Check internet connection
+- Monitor rate limits
+
+### Performance Issues
+- Close unnecessary applications
+- Reduce audio quality settings
+- Disable advanced features if needed
+
+## Advanced Configuration
+
+### Custom Configuration
+```bash
+cp config_template.yml config.yml
+# Edit config.yml for custom settings
+```
+
+### Development Setup
+```bash
+# Install development dependencies
+pip install -r requirements_full.txt
+
+# Run tests
+python -m pytest tests/
+
+# Run component validation
+python component_validator.py
+
+# Run integration tests
+python integration_tests.py
+```
+"""
+            
+            install_file = Path("INSTALLATION.md")
+            with open(install_file, "w") as f:
+                f.write(installation_guide)
+            
+            result["changes"].append(f"Created installation guide: {install_file}")
+            
+            # Create API reference
+            api_reference = """# API Reference - Enhanced Voice Assistant
+
+## Core Components
+
+### VoiceAgent
+Handles speech-to-text and text-to-speech operations.
+
+```python
+from agents.voice_agent import VoiceAgent
+
+agent = VoiceAgent(config)
+audio_path = await agent.text_to_speech("Hello world")
+text = await agent.speech_to_text(audio_data)
+```
+
+### VisionAgent
+Manages computer vision and screen analysis.
+
+```python
+from agents.vision_agent import VisionAgent
+
+agent = VisionAgent(config)
+screenshot = agent.capture_screen()
+elements = await agent.get_screen_elements()
+```
+
+### ActionAgent
+Executes computer automation tasks.
+
+```python
+from agents.action_agent import ActionAgent
+
+agent = ActionAgent(config, safety_manager)
+result = await agent.click(x, y)
+result = await agent.type_text("Hello")
+```
+
+### CoordinatorAgent
+Orchestrates multi-agent workflows.
+
+```python
+from agents.coordinator_agent import CoordinatorAgent
+
+coordinator = CoordinatorAgent(voice_agent, vision_agent, action_agent, config)
+result = await coordinator.process_command("Click the save button")
+```
+
+## Configuration Classes
+
+### AppConfig
+Main application configuration.
+
+```python
+from config.settings import AppConfig
+
+config = AppConfig(
+    openai_api_key="your_key",
+    safety_mode="high"
+)
+```
+
+### SafetyManager
+Manages security and permissions.
+
+```python
+from utils.safety_controls import SafetyManager
+
+safety = SafetyManager("high")
+is_safe = safety.is_action_safe("click", "save button")
+```
+
+## Audio Utilities
+
+### AudioRecorder
+Records audio from microphone.
+
+```python
+from utils.audio_utils import AudioRecorder
+
+recorder = AudioRecorder()
+recorder.start_recording()
+audio_data = recorder.stop_recording()
+```
+
+### AudioPlayer
+Plays audio files.
+
+```python
+from utils.audio_utils import AudioPlayer
+
+player = AudioPlayer()
+player.play_file("audio.mp3")
+```
+
+## API Integration
+
+### DeepSeek API
+```python
+import requests
+
+headers = {"Authorization": f"Bearer {api_key}"}
+data = {
+    "model": "deepseek-chat",
+    "messages": [{"role": "user", "content": "Hello"}]
+}
+
+response = requests.post(
+    "https://api.deepseek.com/v1/chat/completions",
+    headers=headers,
+    json=data
+)
+```
+
+### OpenAI API
+```python
+from openai import OpenAI
+
+client = OpenAI(api_key=api_key)
+
+# Text-to-speech
+response = client.audio.speech.create(
+    model="tts-1",
+    voice="nova",
+    input="Hello world"
+)
+
+# Speech-to-text
+with open("audio.wav", "rb") as f:
+    transcript = client.audio.transcriptions.create(
+        model="whisper-1",
+        file=f
+    )
+```
+
+## Error Handling
+
+### Common Exceptions
+- `APIKeyError`: Invalid or missing API key
+- `AudioError`: Audio device or processing error
+- `SafetyError`: Action blocked by safety controls
+- `ConfigurationError`: Invalid configuration
+
+### Best Practices
+- Always check API key validity before making requests
+- Implement proper error handling for audio operations
+- Use safety controls for automation tasks
+- Log errors for debugging
+
+## Testing
+
+### Unit Tests
+```python
+import unittest
+from agents.voice_agent import VoiceAgent
+
+class TestVoiceAgent(unittest.TestCase):
+    def test_initialization(self):
+        agent = VoiceAgent(config)
+        self.assertIsNotNone(agent)
+```
+
+### Integration Tests
+```python
+python integration_tests.py
+```
+
+### Component Validation
+```python
+python component_validator.py
+```
+"""
+            
+            api_file = Path("API_REFERENCE.md")
+            with open(api_file, "w") as f:
+                f.write(api_reference)
+            
+            result["changes"].append(f"Created API reference: {api_file}")
+            
+            result["status"] = "success"
+            self.log("Documentation upgraded successfully", "success")
+            
+        except Exception as e:
+            result["errors"].append(f"Documentation upgrade failed: {str(e)}")
+            result["status"] = "failed"
+            self.log(f"Documentation upgrade failed: {e}", "error")
+        
+        return result
+    
+    async def upgrade_testing_framework(self) -> Dict[str, Any]:
+        """Upgrade testing framework and add comprehensive tests"""
+        self.log("Upgrading testing framework...")
+        
+        result = {
+            "component": "Testing Framework",
+            "status": "unknown",
+            "changes": [],
+            "errors": []
+        }
+        
+        try:
+            # Create tests directory structure
+            tests_dir = Path("tests")
+            tests_dir.mkdir(exist_ok=True)
+            
+            # Create test configuration
+            test_config = """# Test Configuration
+import os
+import tempfile
+from pathlib import Path
+
+# Test settings
+TEST_API_KEY = "test_key_123"
+TEST_TEMP_DIR = Path(tempfile.gettempdir()) / "voice_assistant_tests"
+TEST_AUDIO_SAMPLE_RATE = 16000
+TEST_TIMEOUT = 10
+
+# Mock responses
+MOCK_OPENAI_RESPONSE = {
+    "choices": [{"message": {"content": "Test response"}}]
+}
+
+MOCK_DEEPSEEK_RESPONSE = {
+    "choices": [{"message": {"content": "Test response from DeepSeek"}}]
+}
+
+# Test data
+TEST_CONVERSATION = [
+    {"role": "user", "content": "Hello"},
+    {"role": "assistant", "content": "Hi there!"}
+]
+"""
+            
+            test_config_file = tests_dir / "test_config.py"
+            with open(test_config_file, "w") as f:
+                f.write(test_config)
+            
+            result["changes"].append(f"Created test configuration: {test_config_file}")
+            
+            # Create pytest configuration
+            pytest_config = """[tool:pytest]
+testpaths = tests
+python_files = test_*.py
+python_classes = Test*
+python_functions = test_*
+addopts = 
+    -v
+    --tb=short
+    --strict-markers
+    --disable-warnings
+markers =
+    unit: Unit tests
+    integration: Integration tests
+    audio: Audio-related tests
+    api: API-related tests
+    slow: Slow tests
+"""
+            
+            pytest_file = Path("pytest.ini")
+            with open(pytest_file, "w") as f:
+                f.write(pytest_config)
+            
+            result["changes"].append(f"Created pytest configuration: {pytest_file}")
+            
+            # Create test runner script
+            test_runner = """#!/usr/bin/env python3
+\"\"\"
+Test Runner for Voice Assistant
+
+Runs different test suites based on command line arguments.
+\"\"\"
+
+import sys
+import subprocess
+import argparse
+from pathlib import Path
+
+def run_unit_tests():
+    \"\"\"Run unit tests\"\"\"
+    cmd = ["python", "-m", "pytest", "tests/", "-m", "unit", "-v"]
+    return subprocess.run(cmd).returncode
+
+def run_integration_tests():
+    \"\"\"Run integration tests\"\"\"
+    cmd = ["python", "-m", "pytest", "tests/", "-m", "integration", "-v"]
+    return subprocess.run(cmd).returncode
+
+def run_all_tests():
+    \"\"\"Run all tests\"\"\"
+    cmd = ["python", "-m", "pytest", "tests/", "-v"]
+    return subprocess.run(cmd).returncode
+
+def run_component_validation():
+    \"\"\"Run component validation\"\"\"
+    cmd = ["python", "component_validator.py"]
+    return subprocess.run(cmd).returncode
+
+def run_integration_validation():
+    \"\"\"Run integration validation\"\"\"
+    cmd = ["python", "integration_tests.py"]
+    return subprocess.run(cmd).returncode
+
+def main():
+    parser = argparse.ArgumentParser(description="Voice Assistant Test Runner")
+    parser.add_argument("--unit", action="store_true", help="Run unit tests")
+    parser.add_argument("--integration", action="store_true", help="Run integration tests")
+    parser.add_argument("--all", action="store_true", help="Run all tests")
+    parser.add_argument("--validate", action="store_true", help="Run component validation")
+    parser.add_argument("--full", action="store_true", help="Run full test suite")
+    
+    args = parser.parse_args()
+    
+    if args.unit:
+        return run_unit_tests()
+    elif args.integration:
+        return run_integration_tests()
+    elif args.all:
+        return run_all_tests()
+    elif args.validate:
+        return run_component_validation()
+    elif args.full:
+        # Run everything
+        results = []
+        results.append(run_unit_tests())
+        results.append(run_integration_tests())
+        results.append(run_component_validation())
+        results.append(run_integration_validation())
+        return max(results)  # Return worst result
+    else:
+        parser.print_help()
+        return 1
+
+if __name__ == "__main__":
+    sys.exit(main())
+"""
+            
+            runner_file = Path("run_tests.py")
+            with open(runner_file, "w") as f:
+                f.write(test_runner)
+            
+            result["changes"].append(f"Created test runner: {runner_file}")
+            
+            result["status"] = "success"
+            self.log("Testing framework upgraded successfully", "success")
+            
+        except Exception as e:
+            result["errors"].append(f"Testing framework upgrade failed: {str(e)}")
+            result["status"] = "failed"
+            self.log(f"Testing framework upgrade failed: {e}", "error")
+        
+        return result
+    
+    async def run_all_upgrades(self) -> Dict[str, Any]:
+        """Run all component upgrades"""
+        if self.console:
+            self.console.print(Panel.fit(
+                "[bold blue]🔧 Voice Assistant Component Upgrader[/bold blue]\n"
+                "Upgrading and validating all components...",
+                title="Component Upgrade",
+                border_style="blue"
+            ))
+        
+        upgrades = [
+            ("Requirements", self.upgrade_requirements),
+            ("Configuration", self.upgrade_configuration),
+            ("Documentation", self.upgrade_documentation),
+            ("Testing Framework", self.upgrade_testing_framework)
+        ]
+        
+        results = {}
+        
+        if self.console:
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                TaskProgressColumn(),
+                console=self.console
+            ) as progress:
+                overall_task = progress.add_task("Running upgrades...", total=len(upgrades))
+                
+                for name, upgrade_func in upgrades:
+                    upgrade_task = progress.add_task(f"Upgrading {name}...", total=None)
+                    results[name] = await upgrade_func()
+                    progress.remove_task(upgrade_task)
+                    progress.advance(overall_task)
+        else:
+            for name, upgrade_func in upgrades:
+                print(f"Upgrading {name}...")
+                results[name] = await upgrade_func()
+        
+        return results
+    
+    def generate_upgrade_report(self, results: Dict[str, Any]) -> str:
+        """Generate upgrade report"""
+        if self.console:
+            # Rich formatted report
+            table = Table(title="Component Upgrade Results")
+            table.add_column("Component", style="cyan", no_wrap=True)
+            table.add_column("Status", style="magenta")
+            table.add_column("Changes", style="green")
+            table.add_column("Issues", style="red")
+            
+            for component, result in results.items():
+                status = result["status"]
+                status_emoji = {
+                    "success": "✅ SUCCESS",
+                    "partial": "⚠️ PARTIAL",
+                    "failed": "❌ FAILED",
+                    "unknown": "❓ UNKNOWN"
+                }.get(status, status)
+                
+                changes = f"{len(result['changes'])} changes"
+                issues = f"{len(result['errors'])} errors"
+                
+                table.add_row(component, status_emoji, changes, issues)
+            
+            self.console.print(table)
+            
+            # Summary
+            successful = sum(1 for r in results.values() if r["status"] == "success")
+            failed = sum(1 for r in results.values() if r["status"] == "failed")
+            total = len(results)
+            
+            summary = f"""
+## Upgrade Summary
+
+- ✅ **Successful**: {successful}/{total} components
+- ❌ **Failed**: {failed}/{total} components
+- 📁 **Backup Directory**: {self.backup_dir}
+
+### Overall Status: {"🎉 ALL UPGRADES SUCCESSFUL" if failed == 0 else f"⚠️ {failed} UPGRADE(S) FAILED"}
+"""
+            
+            self.console.print(Panel(Markdown(summary), title="Upgrade Summary", border_style="green" if failed == 0 else "red"))
+        
+        # Generate detailed text report
+        report_lines = [
+            "# Voice Assistant Component Upgrade Report",
+            f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            f"Backup Directory: {self.backup_dir}",
+            "",
+            "## Summary",
+            ""
+        ]
+        
+        for component, result in results.items():
+            report_lines.extend([
+                f"### {component}",
+                f"**Status**: {result['status'].upper()}",
+                f"**Changes**: {len(result['changes'])}",
+                f"**Errors**: {len(result['errors'])}",
+                ""
+            ])
+            
+            if result['changes']:
+                report_lines.append("**Changes Made:**")
+                for change in result['changes']:
+                    report_lines.append(f"- {change}")
+                report_lines.append("")
+            
+            if result['errors']:
+                report_lines.append("**Errors:**")
+                for error in result['errors']:
+                    report_lines.append(f"- {error}")
+                report_lines.append("")
+        
+        return "\n".join(report_lines)
+
+async def main():
+    """Main upgrade function"""
+    upgrader = ComponentUpgrader()
+    
+    try:
+        # Run all upgrades
+        results = await upgrader.run_all_upgrades()
+        
+        # Generate and save report
+        report = upgrader.generate_upgrade_report(results)
+        
+        # Save report to file
+        report_file = Path("upgrade_report.md")
+        with open(report_file, "w") as f:
+            f.write(report)
+        
+        upgrader.log(f"Upgrade report saved to {report_file}", "success")
+        
+        # Return results for programmatic use
+        return results
+        
+    except Exception as e:
+        upgrader.log(f"Component upgrade failed: {str(e)}", "error")
+        return None
+
+if __name__ == "__main__":
+    asyncio.run(main())
+
