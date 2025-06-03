@@ -1,0 +1,30 @@
+# Advanced DeepSeek Voice Agent - Enhanced Requirements
+
+# Core framework
+streamlit>=1.28.0
+
+# API clients
+openai>=1.0.0
+
+# Speech processing
+speech-recognition>=3.10.0
+pyaudio>=0.2.11
+
+# Audio handling and enhancement
+soundfile>=0.12.1
+sounddevice>=0.4.6
+numpy>=1.21.0
+librosa>=0.10.0
+noisereduce>=3.0.0
+
+# Visualization
+plotly>=5.15.0
+
+# Utilities
+python-dotenv>=1.0.0
+
+# Optional: Advanced audio processing
+# RealtimeSTT>=0.1.0  # Uncomment for real-time STT
+# torch>=2.0.0        # Uncomment for advanced ML features
+# transformers>=4.30.0 # Uncomment for emotion detection models
+
