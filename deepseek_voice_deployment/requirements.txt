@@ -1,0 +1,24 @@
+# DeepSeek Voice Agent - Single Deployment Requirements
+# Minimal dependencies for voice-to-voice functionality
+
+# Core framework
+streamlit>=1.28.0
+
+# API clients
+openai>=1.0.0
+
+# Speech processing
+speech-recognition>=3.10.0
+pyaudio>=0.2.11
+
+# Audio handling
+soundfile>=0.12.1
+sounddevice>=0.4.6
+numpy>=1.21.0
+
+# Utilities
+python-dotenv>=1.0.0
+
+# Optional: Enhanced audio processing
+# RealtimeSTT>=0.1.0  # Uncomment for advanced real-time STT
+
