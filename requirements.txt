@@ -1,0 +1,52 @@
+# Core dependencies
+streamlit>=1.43.2
+openai>=1.68.2
+python-dotenv>=1.0.1
+
+# Computer vision and UI detection
+opencv-python>=4.8.0
+pillow>=10.0.0
+pytesseract>=0.3.10
+numpy>=1.24.0
+
+# Computer automation
+pyautogui>=0.9.54
+pygetwindow>=0.0.9
+psutil>=5.9.0
+
+# Audio processing
+pyaudio>=0.2.11
+wave
+
+# Async support
+asyncio
+
+# Data handling
+pydantic>=2.10.6
+pydantic_core>=2.27.2
+
+# Utilities
+pathlib
+uuid
+tempfile
+threading
+queue
+time
+datetime
+json
+re
+io
+base64
+
+# Optional: Enhanced audio processing
+# soundfile>=0.12.1
+# librosa>=0.10.0
+
+# Optional: Enhanced computer vision
+# easyocr>=1.7.0
+# ultralytics>=8.0.0
+
+# Development and testing
+# pytest>=7.0.0
+# pytest-asyncio>=0.21.0
+
